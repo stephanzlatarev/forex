@@ -7,6 +7,8 @@ RUN apt-get install maven -y
 
 # Fetch the spring boot application and package it
 RUN git clone https://github.com/stephanzlatarev/forex.git
+RUN pwd
+RUN ls -l
 
 # Prepare docker container for start up
 EXPOSE 8080
