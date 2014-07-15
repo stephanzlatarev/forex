@@ -6,9 +6,8 @@ MAINTAINER Stephan Zlatarev
 RUN apt-get install maven -y
 
 # Fetch the application
-RUN git clone https://github.com/stephanzlatarev/forex.git /data && ls -l
+RUN git clone https://github.com/stephanzlatarev/forex.git /data && chmod 777 go.sh && ls -l
 
 # Prepare docker container for start up
 EXPOSE 8080
-RUN chmod 777 go.sh
 ENTRYPOINT /data/go.sh
