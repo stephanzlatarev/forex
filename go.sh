@@ -1,6 +1,3 @@
-git clone https://github.com/stephanzlatarev/forex.git /root/forex
-
 cd /root/forex
-
+git pull
 mvn spring-boot:run test 
-
