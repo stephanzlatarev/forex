@@ -5,9 +5,8 @@ MAINTAINER Stephan Zlatarev
 # Install Maven and Git
 RUN apt-get install maven -y
 
-# Fetch the spring boot application and package it
-RUN git clone --no-checkout https://github.com/stephanzlatarev/forex.git /data && git checkout master
-RUN ls -l
+# Fetch the application
+RUN git clone https://github.com/stephanzlatarev/forex.git /data && ls -l
 
 # Prepare docker container for start up
 EXPOSE 8080
