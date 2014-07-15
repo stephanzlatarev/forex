@@ -10,5 +10,6 @@ RUN git clone https://github.com/stephanzlatarev/forex.git /root/forex
 
 # Prepare docker container for start up
 EXPOSE 8080
-RUN chmod +x /root/forex/go.sh
-ENTRYPOINT /root/forex/go.sh
+WORKDIR /root/forex
+RUN chmod +x ./go.sh
+ENTRYPOINT ./go.sh
