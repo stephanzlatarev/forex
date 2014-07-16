@@ -26,7 +26,7 @@ public class Application {
     Trace.switchTrace("summary", true);
     Trace.switchTrace("memory", true);
     Trace.switchTrace("trade", true);
-    Trace.switchTrace("connection", true);
+    Trace.switchTrace("connection", false);
 
     SpringApplication.run(Application.class, args);
 
