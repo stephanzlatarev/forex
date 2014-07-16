@@ -18,9 +18,13 @@ public class Application {
   }
 
   public static void main(String[] args) {
-    SpringApplication.run(Application.class, args);
+    if ((args.length == 1) && "checksetup".equalsIgnoreCase(args[0])) {
+      System.out.println("Forex trading application is set up.");
+    } else {
+      SpringApplication.run(Application.class, args);
 
-    System.out.println("Forex trading ...");
+      System.out.println("Forex trading ...");
+    }
   }
 
 }
