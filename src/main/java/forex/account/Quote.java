@@ -44,6 +44,7 @@ public class Quote {
       this.sellQuote = sell;
       this.sellPips = pips(sell);
 
+      History.getCandle(this.time).tick(this.buyPips);
       trace.trace(buy + " - " + sell);
     }
   }

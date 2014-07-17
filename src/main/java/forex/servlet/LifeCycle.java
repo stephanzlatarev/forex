@@ -13,8 +13,11 @@ public class LifeCycle implements ClientListener {
   public synchronized void startClient() throws Exception {
     System.out.println(" trader client starting ...");
 
+    String username = System.getProperty("forex.username", "trader.bg@mailimate.com");
+    String password = System.getProperty("forex.password", "Abcd1234");
+
     client = new TraderClient(trader, this);
-    client.connect(System.getProperty("forex.username"), System.getProperty("forex.password"));
+    client.connect(username, password);
     new Thread(client).start();
 
     System.out.println(" trader client started");

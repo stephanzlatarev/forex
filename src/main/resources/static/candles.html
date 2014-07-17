@@ -1,0 +1,179 @@
+<!DOCTYPE html">
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Trader</title>
+    <script src="jquery-1.9.1.js"></script>
+    <script src="jquery.flot.js"></script>
+    <script src="jquery.flot.time.js"></script>
+  </head>
+
+<script type="text/javascript">
+  $(document).ready(function() {
+    refreshData();
+//    setInterval(refreshData, 10000);
+  });
+
+  var weekStart = getWeekStart();
+  var weekEnd = getWeekEnd();
+
+  var advisor;
+  var data;
+
+  var options = {
+    series: {
+      lines: { show: true },
+      points: { show: false }
+    },
+    xaxis : {
+      mode: 'time',
+      timeformat: "%a %H:%M %d.%m %Y",
+      timezone: 'browser',
+      tickSize: [ 3, 'hour' ]
+    }
+  }
+
+  function moveToNowWindow() {
+    refreshData()
+  }
+
+  function moveToPreviousWindow() {
+    console.log("back")
+  }
+
+  function moveToNextWindow() {
+    console.log("forth")
+  }
+
+  function refreshData() {
+    readHistory()
+//    readAdvisor()
+    displayChart()
+  }
+
+  function readHistory() {
+  /*
+    data = [
+      { timestamp: 1405623125617, open: 135267, high: 135277, low: 135247, close: 135257 },
+      { timestamp: 1405625335617, open: 135367, high: 135377, low: 135347, close: 135357 },
+      { timestamp: 1405627545617, open: 135267, high: 135277, low: 135247, close: 135257 },
+      { timestamp: 1405629755617, open: 135267, high: 135177, low: 135147, close: 135157 },
+    ]
+  */
+    $.ajax({
+      url: "candles.json?week=0",
+      dataType: "json",
+      async: false
+    }).done(function(d) { data = d });
+  }
+
+  function readAdvisor() {
+    $.ajax({
+      url: "advisor?week=0",
+      dataType: "json",
+      async: false
+    }).done(function(data) { advisor = data });
+  }
+
+  function displayChart() {
+    var plot = []
+    var series = []
+    var floor = 0;
+    for (i in data) {
+      if ((weekStart <= data[i].timestamp) && (data[i].timestamp <= weekEnd)) {
+        series.push([ data[i].timestamp, data[i].open ])
+        series.push([ data[i].timestamp, data[i].high ])
+        series.push([ data[i].timestamp, data[i].low ])
+        series.push([ data[i].timestamp, data[i].close ])
+
+        if (floor) {
+          floor = Math.min(floor, data[i].low);
+        } else {
+          floor = data[i].low;
+        }
+      }
+    }
+    plot.push({ data: series, color: 'green' });
+
+    // underline trade window
+    floor = Math.floor(floor * 1000) / 1000;
+    plot.push({ data: [ [weekStart, floor], [weekEnd, floor] ], color: 'black' });
+
+    // show advisor advice
+    if (advisor && advisor.watch && advisor.open) {
+      if (advisor.high && advisor.low) {
+        plot.push({ data: [ [advisor.watch, advisor.high], [advisor.open, advisor.high] ], color: 'blue' });
+        plot.push({ data: [ [advisor.watch, advisor.low], [advisor.open, advisor.low] ], color: 'blue' });
+      } else {
+        plot.push({ data: [ [advisor.watch, floor], [advisor.open, floor] ], color: 'blue' });
+      }
+    }
+    if (advisor && advisor.open && advisor.close) {
+      if (advisor.high && advisor.low) {
+        plot.push({ data: [ [advisor.open, advisor.high + 0.005], [advisor.close, advisor.high + 0.005] ], color: 'purple' });
+        plot.push({ data: [ [advisor.open, advisor.low - 0.005], [advisor.close, advisor.low - 0.005] ], color: 'purple' });
+      } else {
+        plot.push({ data: [ [advisor.open, floor], [advisor.close, floor] ], color: 'purple' });
+      }
+    }
+
+    // market hours
+    if (advisor && advisor.high && advisor.low) {
+      var marketClose = getMarketClose();
+      if (marketClose && (marketClose < weekEnd)) {
+        plot.push({ data: [ [marketClose, advisor.high + 0.005], [marketClose, advisor.low - 0.005] ], color: 'black' });
+      }
+    }
+
+    // draw
+    options.xaxis.min = Math.floor(weekStart / 3600000) * 3600000;
+
+    $("#chart").empty()
+      .width($('body').innerWidth()).height($('body').innerHeight())
+      .plot(plot, options).data("plot");
+  }
+
+  function getWeekStart() {
+    var d = new Date();
+    d.setDate(d.getDate() - d.getDay());
+    d.setHours(0);
+    d.setMinutes(0);
+    return d.getTime()
+  }
+
+  function getWeekEnd() {
+    var d = new Date(getWeekStart());
+    d.setDate(d.getDate() + 7);
+    return d.getTime()
+  }
+
+  function getMarketClose() {
+    var d = new Date(weekStart);
+    if (d.getDay() > 5) {
+      return weekEnd
+    } else {
+      d.setDate(d.getDate() + (5 - d.getDay()));
+      d.setHours(23);
+      d.setMinutes(0);
+      return d.getTime()
+    }
+  }
+</script>
+
+ <body>
+  <div id="chart"></div>
+
+  <div style="position:absolute; top:3px; left:100px; z-index:10; background-color:white; border: 2px solid black;">
+   <input type="button" value="Now" onClick="javascript:moveToNowWindow()" />
+   &nbsp;
+   <input type="button" value="Back" onClick="javascript:moveToPreviousWindow()" />
+   &nbsp;
+   Moon sign: <span id="moon_sign">?</span>
+   &nbsp;
+   Moon aspect: <span id="moon_aspect">?</span>
+   &nbsp;
+   <input type="button" value="Forth" onClick="javascript:moveToNextWindow()" />
+  </div>
+ </body>
+
+</html>
