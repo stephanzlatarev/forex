@@ -12,4 +12,4 @@ RUN mvn package
 
 # Prepare docker container for start up
 EXPOSE 8080
-# ENTRYPOINT java -jar target/forex-1.0.0.jar
+ENTRYPOINT java -jar target/forex-1.0.0.jar
