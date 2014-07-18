@@ -10,13 +10,16 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import forex.account.Candle;
 import forex.account.History;
+import forex.advisor.MoonTrader;
+import forex.advisor.TradeWindow;
 import forex.trace.Trace;
 
 @Controller
 @EnableAutoConfiguration
 public class Application {
 
-  private static LifeCycle life = new LifeCycle();
+  private static MoonTrader trader = new MoonTrader();
+  private static LifeCycle life = new LifeCycle(trader);
 
   @RequestMapping(method=RequestMethod.GET, value="/", produces=MediaType.TEXT_PLAIN_VALUE)
   @ResponseBody
@@ -56,6 +59,44 @@ public class Application {
 
       out.append("\"close\":");
       out.append(String.valueOf(candle.getClose()));
+  
+      out.append("}");
+      addComma = true;
+    }
+
+    out.append("]");
+
+    return out.toString();
+  }
+
+  @RequestMapping(method=RequestMethod.GET, value="/advisor.json", produces=MediaType.APPLICATION_JSON_VALUE)
+  @ResponseBody
+  String advisor() {
+    boolean addComma = false;
+    StringBuilder out = new StringBuilder();
+
+    out.append("[");
+
+    for (TradeWindow window: trader.getTradeWindows()) {
+      if (addComma) {
+        out.append(",");
+      }
+      out.append("{");
+  
+      out.append("\"watchtime\":");
+      out.append(String.valueOf(window.getStartTime()));
+      out.append(",");
+
+      out.append("\"opentime\":");
+      out.append(String.valueOf(window.getStartTime()));
+      out.append(",");
+
+      out.append("\"closetime\":");
+      out.append(String.valueOf(window.getEndTime()));
+      out.append(",");
+
+      out.append("\"watchpips\":");
+      out.append(String.valueOf(110));
   
       out.append("}");
       addComma = true;

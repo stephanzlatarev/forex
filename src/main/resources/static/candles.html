@@ -1,4 +1,4 @@
-<!DOCTYPE html">
+<!DOCTYPE html>
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -15,12 +15,13 @@
     refreshData();
   });
 
-  var weekStart = getWeekStart();
-  var weekEnd = getWeekEnd();
-
   var advisor;
   var data;
 
+  var grid = {
+    xStart: getWeekStart(),
+    xEnd: getWeekEnd()
+  }
   var options = {
     series: {
       lines: { show: true },
@@ -47,8 +48,9 @@
 
   function refreshData() {
     readHistory()
-//    readAdvisor()
+    readAdvisor()
     calibrateChart()
+    calibrateGrid()
     displayChart()
   }
 
@@ -62,7 +64,7 @@
 
   function readAdvisor() {
     $.ajax({
-      url: "advisor?week=0",
+      url: "advisor.json?week=0",
       dataType: "json",
       async: false
     }).done(function(data) { advisor = data });
@@ -73,56 +75,54 @@
     tickSize = Math.ceil(24 / Math.floor(24 / tickSize))
     options.xaxis.tickSize = [ tickSize, 'hour']
 
-    options.xaxis.min = Math.floor(weekStart / 3600000) * 3600000;
+    options.xaxis.min = Math.floor(grid.xStart / 3600000) * 3600000;
+  }
+
+  function calibrateGrid() {
+    var floor = 0
+    var ceiling = 0
+    for (i in data) {
+      if ((grid.xStart <= data[i].timestamp) && (data[i].timestamp <= grid.xEnd)) {
+        floor = floor ? Math.min(floor, data[i].low) : data[i].low;
+        ceiling = ceiling ? Math.max(ceiling, data[i].high) : data[i].high;
+      }
+    }
+
+    var mid = (floor + ceiling) / 2
+    if (advisor) {
+      for (i in advisor) {
+        floor = floor ? Math.min(floor, mid - advisor[i].watchpips - 5) : mid - advisor[i].watchpips - 5;
+        ceiling = ceiling ? Math.max(ceiling, mid + advisor[i].watchpips + 5) : mid + advisor[i].watchpips + 5;
+      }
+    }
+
+    grid.yMin = Math.floor(floor / 100) * 100 + 10
+    grid.yMax = Math.ceil(ceiling / 100) * 100 - 10
+    grid.yMid = (grid.yMin + grid.yMax) / 2
   }
 
   function displayChart() {
     var plot = []
     var series = []
-    var floor = 0;
+
+    frameMarketHours(plot)
+
     for (i in data) {
-      if ((weekStart <= data[i].timestamp) && (data[i].timestamp <= weekEnd)) {
+      if ((grid.xStart <= data[i].timestamp) && (data[i].timestamp <= grid.xEnd)) {
         series.push([ data[i].timestamp, data[i].open ])
         series.push([ data[i].timestamp, data[i].high ])
         series.push([ data[i].timestamp, data[i].low ])
         series.push([ data[i].timestamp, data[i].close ])
-
-        if (floor) {
-          floor = Math.min(floor, data[i].low);
-        } else {
-          floor = data[i].low;
-        }
       }
     }
+
     plot.push({ data: series, color: 'green' });
 
-    // underline trade window
-    floor = Math.floor(floor * 1000) / 1000;
-    plot.push({ data: [ [weekStart, floor], [weekEnd, floor] ], color: 'black' });
-
     // show advisor advice
-    if (advisor && advisor.watch && advisor.open) {
-      if (advisor.high && advisor.low) {
-        plot.push({ data: [ [advisor.watch, advisor.high], [advisor.open, advisor.high] ], color: 'blue' });
-        plot.push({ data: [ [advisor.watch, advisor.low], [advisor.open, advisor.low] ], color: 'blue' });
-      } else {
-        plot.push({ data: [ [advisor.watch, floor], [advisor.open, floor] ], color: 'blue' });
-      }
-    }
-    if (advisor && advisor.open && advisor.close) {
-      if (advisor.high && advisor.low) {
-        plot.push({ data: [ [advisor.open, advisor.high + 0.005], [advisor.close, advisor.high + 0.005] ], color: 'purple' });
-        plot.push({ data: [ [advisor.open, advisor.low - 0.005], [advisor.close, advisor.low - 0.005] ], color: 'purple' });
-      } else {
-        plot.push({ data: [ [advisor.open, floor], [advisor.close, floor] ], color: 'purple' });
-      }
-    }
-
-    // market hours
-    if (advisor && advisor.high && advisor.low) {
-      var marketClose = getMarketClose();
-      if (marketClose && (marketClose < weekEnd)) {
-        plot.push({ data: [ [marketClose, advisor.high + 0.005], [marketClose, advisor.low - 0.005] ], color: 'black' });
+    if (advisor) {
+      for (i in advisor) {
+        plot.push(newFrame(advisor[i].watchtime, advisor[i].closetime, grid.yMin + 5, grid.yMax - 5, 'blue'))
+        plot.push(newFrame(advisor[i].watchtime, advisor[i].opentime, grid.yMid + advisor[i].watchpips, grid.yMid - advisor[i].watchpips, 'blue'))
       }
     }
 
@@ -130,6 +130,34 @@
     $("#chart").empty()
       .width($('body').innerWidth()).height($('body').innerHeight())
       .plot(plot, options).data("plot");
+  }
+
+  // Market hours (GMT):
+  // Sydney:   10:00 pm - 07:00 am
+  // Tokyo:    00:00 am - 09:00 am
+  // London:   08:00 am - 05:00 pm
+  // New York: 01:00 pm – 10:00 pm
+  function frameMarketHours(plot) {
+    var offset = - new Date().getTimezoneOffset()
+    var d = new Date(grid.xStart + offset * 60000)
+    d.setDate(d.getDate() - d.getDay() + 0)
+    d.setHours(22)
+    d.setMinutes(offset)
+    grid.marketStart = d.getTime()
+
+    d.setDate(d.getDate() - d.getDay() + 5)
+    d.setHours(22)
+    d.setMinutes(offset)
+    grid.marketEnd = d.getTime()
+
+    plot.push(newFrame(grid.marketStart, grid.marketEnd, grid.yMin, grid.yMax, 'black'))
+
+    plot.push({ data: [ [grid.xStart, grid.yMid], [grid.marketStart, grid.yMid] ], color: 'black' });
+    plot.push({ data: [ [grid.marketEnd, grid.yMid], [grid.xEnd, grid.yMid] ], color: 'black' });
+  }
+
+  function newFrame(x1, x2, y1, y2, color) {
+    return { data: [ [x1, y1], [x1, y2], [x2, y2], [x2, y1], [x1, y1] ], color: color }
   }
 
   function getWeekStart() {
@@ -144,18 +172,6 @@
     var d = new Date(getWeekStart());
     d.setDate(d.getDate() + 7);
     return d.getTime()
-  }
-
-  function getMarketClose() {
-    var d = new Date(weekStart);
-    if (d.getDay() > 5) {
-      return weekEnd
-    } else {
-      d.setDate(d.getDate() + (5 - d.getDay()));
-      d.setHours(23);
-      d.setMinutes(0);
-      return d.getTime()
-    }
   }
 </script>
 

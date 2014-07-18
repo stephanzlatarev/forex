@@ -1,5 +1,8 @@
 package forex.advisor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import forex.account.Quote;
 import forex.astronom.Time;
 import forex.astronom.planet.Planet;
@@ -12,20 +15,21 @@ public class MoonTrader implements Advisor {
   private final Planet EARTH = SYSTEM.getPlanet(SolarSystem.EARTH);
   private final Planet MOON = SYSTEM.getPlanet(SolarSystem.MOON);
   private final Planet SUN = SYSTEM.getPlanet(SolarSystem.SUN);
-//  private final MoonNode NODE = new MoonNode();
 
+  private int COMBO = -1;
   private int THRESHOLD = 110;
-  private int VOID_PERIOD = 11;
-  private long WAIT_PERIOD = 0;
+  private int VOID_PERIOD = 25200000;
 
-  private int baseCombo = calculateCombo(System.currentTimeMillis());
-  private int currentCombo = 0;
-  private int voidPeriod = 0;
+  private long weekStart = 0;
+  private long weekEnd = 0;
+  private ArrayList<TradeWindow> tradeWindows = new ArrayList<TradeWindow>();
 
-  private int basePips = 0;
-  private long baseTime = 0;
-
+  private TradeWindow currentTradeWindow = null;
   private boolean isTransactionOpen = false;
+
+  public void setCombo(int combo) {
+    COMBO = combo;
+  }
 
   public void setThreshold(int threshold) {
     THRESHOLD = threshold;
@@ -35,76 +39,108 @@ public class MoonTrader implements Advisor {
     VOID_PERIOD = voidPeriod;
   }
 
-  public void setWaitPeriod(long waitPeriod) {
-    WAIT_PERIOD = waitPeriod;
+  public List<TradeWindow> getTradeWindows() {
+    return tradeWindows;
   }
 
   @Override
   public Advice getAdvice(Quote quote) {
-    calculate(quote);
+    Advice advice = Advice.HOLD;
+    TradeWindow window = getTradeWindow(quote.getTime());
 
-    if (currentCombo != baseCombo) {
-      baseCombo = currentCombo;
-      basePips = quote.getBuyPips();
-      baseTime = quote.getTime();
-
-      if (isTransactionOpen) {
-        isTransactionOpen = false;
-        return Advice.CLOSE;
-      } else {
-        return Advice.HOLD;
+    if ((window != null) && (window == currentTradeWindow)) {
+      if (!isTransactionOpen && isQuoteTradeableInWindow(quote, window)) {
+        if (quote.getBuyPips() > window.getStartPips() + THRESHOLD) {
+          isTransactionOpen = true;
+          advice = Advice.BUY;
+        } else if (quote.getBuyPips() < window.getStartPips() - THRESHOLD) {
+          isTransactionOpen = true;
+          advice = Advice.SELL;
+        }
       }
+    } else if (isTransactionOpen) {
+      isTransactionOpen = false;
+      advice = Advice.CLOSE;
     }
 
-    if (quote.getTime() <= baseTime + WAIT_PERIOD) {
-      basePips = quote.getBuyPips();
+    currentTradeWindow = window;
+    if ((currentTradeWindow != null) && (currentTradeWindow.getStartPips() == 0)) {
+      currentTradeWindow.setStartPips(quote.getBuyPips());
     }
-
-    if (!isTransactionOpen && (quote.getTime() > baseTime + WAIT_PERIOD) && (voidPeriod > VOID_PERIOD)) {
-      if (quote.getBuyPips() > basePips + THRESHOLD) {
-        isTransactionOpen = true;
-        return Advice.BUY;
-      }
-  
-      if (quote.getBuyPips() < basePips - THRESHOLD) {
-        isTransactionOpen = true;
-        return Advice.SELL;
-      }
-    }
-
-    if (!isTransactionOpen) {
-      System.out.println("[moon trader] next trade in about " + (voidPeriod * 28 * 24 / 360) + " hours");
-    }
-
-    return Advice.HOLD;
+    return advice;
   }
 
-  private void calculate(Quote quote) {
-    calculateCombo(quote.getTime());
+  public TradeWindow getTradeWindow(long time) {
+    findTradeWindows(time);
+
+    for (TradeWindow window: tradeWindows) {
+      if (window.containsTime(time)) {
+        return window;
+      }
+    }
+
+    return null;
   }
 
-  private int calculateCombo(long time) {
-    SYSTEM.calculate(new Time(time));
+  private synchronized void findTradeWindows(long weekTime) {
+    if ((weekStart <= weekTime) && (weekTime <= weekEnd)) {
+      return;
+    } else {
+      tradeWindows.clear();
+    }
+
+    Time time = new Time(weekTime);
+    time.set(Time.DAY_OF_WEEK, Time.SUNDAY);
+    time.set(Time.HOUR_OF_DAY, 22);
+    time.set(Time.MINUTE, 0);
+    time.set(Time.SECOND, 0);
+    time.set(Time.MILLISECOND, 0);
+
+    weekStart = time.getTimeInMillis();
+    weekEnd = weekStart + 1000L * 60 * 60 * 24 * 5;
+
+    int windowCombo = calculateCombo(time);
+    long windowOpenTime = 0;
+    while (time.getTimeInMillis() < weekEnd) {
+      time.add(Time.HOUR, 1);
+
+      int newCombo = calculateCombo(time);
+      if (newCombo != windowCombo) {
+        if (windowOpenTime > 0) {
+          tradeWindows.add(new TradeWindow(windowCombo, windowOpenTime, time.getTimeInMillis()));
+        }
+        windowOpenTime = time.getTimeInMillis();
+        windowCombo = newCombo;
+      }
+    }
+
+    // expand week time bound to include weekends so that trade window in not recalculated for weekends
+    weekStart -= 1000L * 60 * 60 * 22; // Sunday
+    weekStart -= 1000L * 60 * 60 * 24; // Saturday
+    weekStart -= 1000L * 60 * 60 * 2; // Friday
+    weekEnd += 1000L * 60 * 60 * 2; // Friday
+    weekEnd += 1000L * 60 * 60 * 24; // Saturday
+    weekEnd += 1000L * 60 * 60 * 22; // Saturday
+  }
+
+  private boolean isQuoteTradeableInWindow(Quote quote, TradeWindow window) {
+    if ((COMBO > 0) && (window.getCombo() != COMBO)) {
+      return false;
+    }
+
+    return window.isInWatchPeriod(quote.getTime()) && (window.getEndTime() - quote.getTime() > VOID_PERIOD);
+  }
+
+  private int calculateCombo(Time time) {
+    SYSTEM.calculate(time);
 
     double moonSign = MOON.positionAround(EARTH);
+    int comboSign = ((int) Zodiac.degree(moonSign) / 30) % 4 + 1;
+
     double moonSun = MOON.positionAround(EARTH) - SUN.positionAround(EARTH);
+    int comboSun = ((int) Zodiac.degree(moonSun) / 30) % 4 + 1;
 
-//    NODE.position(time.getStandardYearTime());
-//    double moonNode = NODE.getPosition(null);
-
-    currentCombo = sign(moonSign) * 100 + sign(moonSun);
-    voidPeriod = Math.min(voidPeriod(moonSign), voidPeriod(moonSun));
-//    System.out.println(" moon: zodiac: " + moonSign + "; sun: " + moonSunAspect + "; combo: " + currentCombo);
-
-    return currentCombo;
-  }
-
-  private final int sign(double degree) {
-    return (int) Zodiac.degree(degree) / 30 + 1;
-  }
-
-  private final int voidPeriod(double degree) {
-    return 30 - (int) Zodiac.degree(degree) % 30;
+    return comboSign * 100 + comboSun;
   }
 
 }

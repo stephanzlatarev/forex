@@ -1,14 +1,17 @@
 package forex.servlet;
 
 import forex.advisor.Advisor;
-import forex.advisor.MoonTrader;
 import forex.trader.ClientListener;
 import forex.trader.TraderClient;
 
 public class LifeCycle implements ClientListener {
 
-  private Advisor trader = new MoonTrader();
+  private Advisor trader;
   private TraderClient client;
+
+  public LifeCycle(Advisor trader) {
+    this.trader = trader;
+  }
 
   public synchronized void startClient() throws Exception {
     System.out.println(" trader client starting ...");
