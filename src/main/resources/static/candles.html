@@ -9,9 +9,10 @@
   </head>
 
 <script type="text/javascript">
+  /* for local testing */ if (window.location.origin == "file://") $.getScript("../../../test/resources/testdata.js", refreshData)
+
   $(document).ready(function() {
     refreshData();
-//    setInterval(refreshData, 10000);
   });
 
   var weekStart = getWeekStart();
@@ -28,8 +29,7 @@
     xaxis : {
       mode: 'time',
       timeformat: "%a %H:%M %d.%m %Y",
-      timezone: 'browser',
-      tickSize: [ 3, 'hour' ]
+      timezone: 'browser'
     }
   }
 
@@ -48,18 +48,11 @@
   function refreshData() {
     readHistory()
 //    readAdvisor()
+    calibrateChart()
     displayChart()
   }
 
   function readHistory() {
-  /*
-    data = [
-      { timestamp: 1405623125617, open: 135267, high: 135277, low: 135247, close: 135257 },
-      { timestamp: 1405625335617, open: 135367, high: 135377, low: 135347, close: 135357 },
-      { timestamp: 1405627545617, open: 135267, high: 135277, low: 135247, close: 135257 },
-      { timestamp: 1405629755617, open: 135267, high: 135177, low: 135147, close: 135157 },
-    ]
-  */
     $.ajax({
       url: "candles.json?week=0",
       dataType: "json",
@@ -73,6 +66,14 @@
       dataType: "json",
       async: false
     }).done(function(data) { advisor = data });
+  }
+
+  function calibrateChart() {
+    var tickSize = Math.ceil(5000 / $('body').innerWidth())
+    tickSize = Math.ceil(24 / Math.floor(24 / tickSize))
+    options.xaxis.tickSize = [ tickSize, 'hour']
+
+    options.xaxis.min = Math.floor(weekStart / 3600000) * 3600000;
   }
 
   function displayChart() {
@@ -126,8 +127,6 @@
     }
 
     // draw
-    options.xaxis.min = Math.floor(weekStart / 3600000) * 3600000;
-
     $("#chart").empty()
       .width($('body').innerWidth()).height($('body').innerHeight())
       .plot(plot, options).data("plot");
