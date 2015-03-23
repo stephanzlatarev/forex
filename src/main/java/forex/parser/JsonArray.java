@@ -1,4 +1,4 @@
-package forex.json;
+package forex.parser;
 
 public class JsonArray {
 

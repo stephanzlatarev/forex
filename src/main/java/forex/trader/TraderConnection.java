@@ -4,11 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.InetAddress;
-import java.net.Socket;
-import java.net.UnknownHostException;
-import java.security.KeyStore;
-import java.security.cert.CertificateException;
+import java.net.ProxySelector;
 import java.security.cert.X509Certificate;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,37 +17,25 @@ import javax.net.ssl.X509TrustManager;
 
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
-import org.apache.http.HttpVersion;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.conn.ClientConnectionManager;
-import org.apache.http.conn.scheme.PlainSocketFactory;
-import org.apache.http.conn.scheme.Scheme;
-import org.apache.http.conn.scheme.SchemeRegistry;
-import org.apache.http.conn.ssl.SSLSocketFactory;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.conn.ssl.X509HostnameVerifier;
 import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
-import org.apache.http.params.BasicHttpParams;
-import org.apache.http.params.HttpConnectionParams;
-import org.apache.http.params.HttpParams;
-import org.apache.http.params.HttpProtocolParams;
-import org.apache.http.protocol.HTTP;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.conn.SystemDefaultRoutePlanner;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import forex.json.JsonArray;
-import forex.json.JsonObject;
-import forex.trace.Trace;
+import forex.parser.JsonArray;
+import forex.parser.JsonObject;
 
-@SuppressWarnings("deprecation")
 public class TraderConnection {
-
-  private static Trace trace = new Trace("connection");
 
   private Set<String> cookies = new HashSet<String>();
 
@@ -60,6 +44,7 @@ public class TraderConnection {
 
   private String clientId = null;
   private int requestId = 0;
+  private int serviceBatchId = 1;
 
   public TraderConnection() {
     this.http = getNewHttpClient();
@@ -81,12 +66,11 @@ public class TraderConnection {
     return cookies;
   }
 
-  private synchronized HttpResponse request(HttpUriRequest request) throws Exception {
+  private synchronized HttpResponse request(HttpUriRequest request) throws IOException {
     return http.execute(request);
   }
 
-  public String getForPage(String endpoint, Map<String, String> headers) throws Exception {
-    trace.trace(">> GET " + url + endpoint);
+  public String getForPage(String endpoint, Map<String, String> headers) throws IOException {
     HttpGet get = new HttpGet(url + endpoint);
 
     if (headers != null) {
@@ -99,8 +83,6 @@ public class TraderConnection {
     HttpResponse response = request(get);
     handleResponseCookies(response);
 
-    trace.trace("<< " + response);
-
     StringBuilder text = new StringBuilder();
     BufferedReader reader = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
     String line = "";
@@ -112,12 +94,13 @@ public class TraderConnection {
     return text.toString();
   }
 
-  public void post(String endpoint, String data, Map<String, String> headers) throws Exception {
+  @SuppressWarnings("deprecation")
+  public void post(String endpoint, String data, Map<String, String> headers) throws IOException {
     HttpResponse response = postForResponse(endpoint, data, headers);
     response.getEntity().consumeContent();
   }
 
-  public JsonNode poll(String endpoint, Object... data) throws Exception {
+  public JsonNode poll(String endpoint, Object... data) throws IOException {
     HashMap<String, String> headers = new HashMap<String, String>();
     headers.put("Connection", "keep-alive");
     headers.put("Content-Type", "application/json; charset=UTF-8");
@@ -125,7 +108,7 @@ public class TraderConnection {
     return postForJson(endpoint, new JsonArray(new JsonObject(data)).toString(), headers);
   }
 
-  public JsonNode postForJson(String endpoint, String data, Map<String, String> headers) throws Exception {
+  public JsonNode postForJson(String endpoint, String data, Map<String, String> headers) throws IOException {
     HttpResponse response = postForResponse(endpoint, data, headers);
     JsonNode message = toJson(response.getEntity().getContent());
 
@@ -143,12 +126,10 @@ public class TraderConnection {
       }
     }
 
-    trace.trace("<< " + message);
     return message;
   }
 
-  private HttpResponse postForResponse(String endpoint, String data, Map<String, String> headers) throws Exception {
-    trace.trace(">> POST " + url + endpoint + " " + data);
+  private HttpResponse postForResponse(String endpoint, String data, Map<String, String> headers) throws IOException {
     HttpPost post = new HttpPost(url + endpoint);
 
     if (headers != null) {
@@ -162,12 +143,10 @@ public class TraderConnection {
     HttpResponse response = request(post);
     handleResponseCookies(response);
 
-    trace.trace("<< " + response);
     return response;
   }
 
-  private int serviceBatchId = 1;
-  public String service(TraderClient client, String endpoint, String... params) throws Exception {
+  public String service(TraderClient client, String endpoint, String... params) throws IOException {
     HashMap<String, String> headers = new HashMap<String, String>();
     headers.put("Connection", "keep-alive");
     headers.put("Content-Type", "application/json; charset=UTF-8");
@@ -185,9 +164,8 @@ public class TraderConnection {
     data.append("batchId=" + (serviceBatchId++) + "\r\n");
 
     HttpResponse response = postForResponse(endpoint, data.toString(), headers);
-    String message = toString(response.getEntity().getContent());
+    String message = read(response.getEntity().getContent());
 
-    trace.trace("<< " + message);
     return message;
   }
 
@@ -207,7 +185,7 @@ public class TraderConnection {
     }
   }
 
-  private JsonNode toJson(InputStream stream) throws Exception {
+  private JsonNode toJson(InputStream stream) throws IOException {
     BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
     String line = reader.readLine();
 
@@ -222,7 +200,7 @@ public class TraderConnection {
     }
   }
 
-  public String toString(InputStream stream) throws Exception {
+  private String read(InputStream stream) throws IOException {
     StringBuilder text = new StringBuilder();
     BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
     String line = "";
@@ -236,69 +214,25 @@ public class TraderConnection {
 
   private HttpClient getNewHttpClient() {
     try {
-      KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
-      trustStore.load(null, null);
-
-      SSLSocketFactory sf = new NaiveSSLSocketFactory(trustStore);
-      sf.setHostnameVerifier(SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
-
-      HttpParams params = new BasicHttpParams();
-
-      HttpConnectionParams.setConnectionTimeout(params, 60000);
-      HttpConnectionParams.setSoTimeout(params, 60000);
-
-      HttpProtocolParams.setVersion(params, HttpVersion.HTTP_1_1);
-      HttpProtocolParams.setContentCharset(params, HTTP.UTF_8);
-
-      SchemeRegistry registry = new SchemeRegistry();
-      registry.register(new Scheme("http", PlainSocketFactory.getSocketFactory(), 80));
-      registry.register(new Scheme("https", sf, 443));
-
-      ClientConnectionManager ccm = new ThreadSafeClientConnManager(params, registry);
-
-      return new DefaultHttpClient(ccm, params);
-    } catch (Exception e) {
-      return new DefaultHttpClient();
-    }
-  }
-
-  static {
-    try {
-      InetAddress.getByName("www.trader.bg");
-    } catch (UnknownHostException e) {
-      System.err.println(e.toString());
-    }
-  }
-
-  class NaiveSSLSocketFactory extends SSLSocketFactory {
-    SSLContext sslContext = SSLContext.getInstance("TLS");
-
-    public NaiveSSLSocketFactory(KeyStore truststore) throws Exception {
-      super(truststore);
-
-      TrustManager tm = new X509TrustManager() {
-        public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-        }
-
-        public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-        }
-
-        public X509Certificate[] getAcceptedIssuers() {
-          return null;
-        }
+      X509HostnameVerifier hostnameVerifier = SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER;
+      SSLContext sslContext = SSLContext.getInstance(SSLConnectionSocketFactory.TLS);
+      TrustManager trustManager = new X509TrustManager() {
+        public void checkClientTrusted(X509Certificate[] chain, String authType) {}
+        public void checkServerTrusted(X509Certificate[] chain, String authType) {}
+        public X509Certificate[] getAcceptedIssuers() { return null; }
       };
-
-      sslContext.init(null, new TrustManager[] { tm }, null);
-    }
-
-    @Override
-    public Socket createSocket(Socket socket, String host, int port, boolean autoClose) throws IOException, UnknownHostException {
-      return sslContext.getSocketFactory().createSocket(socket, host, port, autoClose);
-    }
-
-    @Override
-    public Socket createSocket() throws IOException {
-      return sslContext.getSocketFactory().createSocket();
+  
+      sslContext.init(null, new TrustManager[] { trustManager }, null);
+  
+      SSLConnectionSocketFactory connectionSocketFactory = new SSLConnectionSocketFactory(sslContext, hostnameVerifier);
+      SystemDefaultRoutePlanner routePlanner = new SystemDefaultRoutePlanner(ProxySelector.getDefault());
+      CloseableHttpClient httpclient = HttpClients.custom()
+          .setSSLSocketFactory(connectionSocketFactory)
+          .setRoutePlanner(routePlanner)
+          .build();
+      return httpclient;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 

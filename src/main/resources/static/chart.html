@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Trader</title>
+    <script src="jquery-1.9.1.js"></script>
+    <script src="jquery.flot.js"></script>
+    <script src="jquery.flot.time.js"></script>
+  </head>
+
+<script type="text/javascript">
+  $(document).ready(function() {
+    readHistory();
+  });
+
+  var advisor;
+  var data;
+
+  var grid = {
+    xStart: getWeekStart(),
+    xEnd: getWeekEnd()
+  }
+  var options = {
+    series: {
+      lines: { show: true },
+      points: { show: false }
+    },
+    xaxis : {
+      mode: 'time',
+      timeformat: "%a %H:%M %d.%m %Y",
+      timezone: 'browser'
+    }
+  }
+
+  function readHistory() {
+    $.ajax({
+      url: "chart/",
+      dataType: "json"
+    }).done(function(d) {
+      data = d
+      displayData()
+    });
+  }
+
+  function displayData() {
+    calibrateChart()
+    calibrateGrid()
+    displayChart()
+  }
+
+  function calibrateChart() {
+    var tickSize = Math.ceil(5000 / $('#chart').innerWidth())
+    tickSize = Math.ceil(24 / Math.floor(24 / tickSize))
+    options.xaxis.tickSize = [ tickSize, 'hour']
+
+    options.xaxis.min = Math.floor(grid.xStart / 3600000) * 3600000;
+  }
+
+  function calibrateGrid() {
+    var floor = 0
+    var ceiling = 0
+    for (i in data) {
+      if ((grid.xStart <= data[i].timestamp) && (data[i].timestamp <= grid.xEnd)) {
+        floor = floor ? Math.min(floor, data[i].low) : data[i].low;
+        ceiling = ceiling ? Math.max(ceiling, data[i].high) : data[i].high;
+      }
+    }
+
+    grid.yMin = Math.floor(floor / 100) * 100 + 10
+    grid.yMax = Math.ceil(ceiling / 100) * 100 - 10
+    grid.yMid = (grid.yMin + grid.yMax) / 2
+  }
+
+  function displayChart() {
+    var plot = []
+    var series = []
+
+    frameMarketHours(plot)
+
+    for (i in data) {
+      if ((grid.xStart <= data[i].timestamp) && (data[i].timestamp <= grid.xEnd)) {
+        series.push([ data[i].timestamp, data[i].open ])
+        series.push([ data[i].timestamp, data[i].high ])
+        series.push([ data[i].timestamp, data[i].low ])
+        series.push([ data[i].timestamp, data[i].close ])
+      }
+    }
+
+    plot.push({ data: series, color: 'green' });
+
+    // draw
+    $("#chart").empty()
+      .width($(window).innerWidth() - 16).height($(window).innerWidth() - 80)
+      .plot(plot, options).data("plot");
+  }
+
+  // Market hours (GMT):
+  // Sydney:   10:00 pm - 07:00 am
+  // Tokyo:    00:00 am - 09:00 am
+  // London:   08:00 am - 05:00 pm
+  // New York: 01:00 pm - 10:00 pm
+  function frameMarketHours(plot) {
+    plot.push(newFrame(getWeekStart(), getWeekEnd(), grid.yMin, grid.yMax, 'black'))
+
+    for (var d = 1; d <= 5; d++) {
+      plot.push(newFrame(getTime(d, 8), getTime(d, 17), grid.yMin, grid.yMax, 'black'))
+      plot.push(newFrame(getTime(d, 13), getTime(d, 22), grid.yMin, grid.yMax, 'black'))
+    }
+  }
+
+  function newFrame(x1, x2, y1, y2, color) {
+    return { data: [ [x1, y1], [x1, y2], [x2, y2], [x2, y1], [x1, y1] ], color: color }
+  }
+
+  function getTime(day, hour) {
+    var offset = - new Date().getTimezoneOffset()
+    var d = new Date()
+    d.setDate(d.getDate() - d.getDay() + day)
+    d.setHours(hour)
+    d.setMinutes(offset)
+    return d.getTime()
+  }
+
+  function getWeekStart() {
+    return getTime(0, 22)
+  }
+
+  function getWeekEnd() {
+    return getTime(5, 22)
+  }
+</script>
+
+ <body style=>
+  <div id="chart" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%"></div>
+ </body>
+
+</html>
