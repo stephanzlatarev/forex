@@ -3,7 +3,7 @@ FROM java:7
 MAINTAINER Stephan Zlatarev
 
 # Install Maven and Git
-RUN apt-get update && \
+RUN apt-get update
 RUN apt-get install -y maven
 
 # Fetch the application and package it into an executable jar
