@@ -52,11 +52,16 @@ public class MoonTrader implements Advisor {
       if (!isTransactionOpen && isQuoteTradeableInWindow(quote, window)) {
         if (quote.getBuyPips() > window.getStartPips() + THRESHOLD) {
           isTransactionOpen = true;
-          advice = Advice.BUY;
+          advice = new Advice(Advice.Action.Buy, 1000);
+          advice.setProperty("window", window.toString());
         } else if (quote.getBuyPips() < window.getStartPips() - THRESHOLD) {
           isTransactionOpen = true;
-          advice = Advice.SELL;
+          advice = new Advice(Advice.Action.Sell, 1000);
+          advice.setProperty("window", window.toString());
         }
+      } else if (isTransactionOpen && !isQuoteTradeableInWindow(quote, window)) {
+        isTransactionOpen = false;
+        advice = Advice.CLOSE;
       }
     } else if (isTransactionOpen) {
       isTransactionOpen = false;
@@ -129,6 +134,14 @@ public class MoonTrader implements Advisor {
     }
 
     return window.isInWatchPeriod(quote.getTime()) && (window.getEndTime() - quote.getTime() > VOID_PERIOD);
+
+//    // check for London trading and New York closed
+//    Time time = new Time(quote.getTime());
+//    if ((time.get(Time.HOUR_OF_DAY) < 8) || (time.get(Time.HOUR_OF_DAY) > 13)) {
+//      return false;
+//    }
+//
+//    return true;
   }
 
   private int calculateCombo(Time time) {

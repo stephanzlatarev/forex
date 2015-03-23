@@ -18,6 +18,7 @@ public class TraderSession {
 
   public TraderSession(TraderConnection connection) {
     this.connection = connection;
+    Trace.switchTrace("session", true);
   }
 
   public void login(String username, String password) throws Exception {
@@ -52,11 +53,13 @@ public class TraderSession {
   }
 
   private String getForRandom() throws Exception {
+    final String PREFIX = "<input type=\"hidden\" class=\"form-control\" name=\"rand\" value=\"";
+
     String page = connection.getForPage("bg/%D0%92%D1%85%D0%BE%D0%B4/", null);
 
-    int index = page.indexOf("<input type=\"hidden\" name=\"rand\"");
+    int index = page.indexOf(PREFIX);
     if (index > 0) {
-      index += 40; // skipping to opening quotes
+      index += PREFIX.length();
       return page.substring(index, page.indexOf("\"", index));
     } else {
       throw new IllegalStateException("No random token!");
@@ -72,6 +75,7 @@ public class TraderSession {
 
     JsonNode json = connection.postForJson("bg/accounts/loginCustomer/", data, headers);
 
+    System.out.println(json);
     return json.get("data").get(0).get("info").get("params").get("ticket").asText();
   }
 

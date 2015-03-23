@@ -3,6 +3,7 @@ package forex.astronom.planet;
 import java.util.Calendar;
 
 import forex.astronom.ActivePoint;
+import forex.astronom.Time;
 import forex.astronom.util.*;
 
 public class MoonNode extends ActivePoint {
@@ -43,12 +44,26 @@ public class MoonNode extends ActivePoint {
 
   @Override
   public double getPosition(Calendar calendar) {
-    return position;
+    return Zodiac.degree(position + 136); // approximation
   }
+
+//  public static void main(String[] args) {
+//    MoonNode node = new MoonNode();
+//    Time time = new Time();
+//    time.set(Calendar.YEAR, 2012);
+//    time.set(Calendar.DAY_OF_YEAR, 1);
+//    time.set(Calendar.HOUR_OF_DAY, 0);
+//    for (int i = 0; i < 100; i++, time.add(Calendar.DAY_OF_YEAR, 10)) {
+//      node.position(time.getJulianYearTime());
+//      System.out.println(Zodiac.toString(Zodiac.degree(node.getPosition(time)), "DD ZZZ MM") + "  " + time.toSimpleString());
+//    }
+//  }
 
 }
 
 /*
+http://www.mathworks.com/matlabcentral/fileexchange/39130-orbital-elements-of-the-moon/content/elp2000.m
+
 http://www.true-node.com/eph1/?inputNumber=Moon&day=1&month=1&year=2012&time=00%3A00%3A00&zone=GMT+0&interval_num=10&interval=day&lines=100&.submit=Get+Ephemeris&calendar=Gregorian&zodiac=Tropical&origin=Geocentric&lighttime=Apparent&clock=Universal+Time&zodsec=D%B0M&nnode=on
 
     Date     |    Moon    |

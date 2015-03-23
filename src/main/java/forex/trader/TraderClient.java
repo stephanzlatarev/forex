@@ -68,14 +68,7 @@ public class TraderClient implements Runnable {
   public synchronized void run() {
     while (!isClosed()) {
       try {
-        getAccountService.status();
-        getQuoteService.fetchQuote();
-
-        trace.trace(account + " " + quote);
-
-        memory();
-
-        tradeService.trade();
+        cycle();
       } catch (Exception e) {
         e.printStackTrace();
 
@@ -83,6 +76,17 @@ public class TraderClient implements Runnable {
         return;
       }
     }
+  }
+
+  public void cycle() throws Exception {
+    getAccountService.status();
+    getQuoteService.fetchQuote();
+
+    trace.trace(account + " " + quote);
+
+    memory();
+
+    tradeService.trade();
   }
 
   public static void memory() {

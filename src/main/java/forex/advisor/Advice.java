@@ -1,5 +1,7 @@
 package forex.advisor;
 
+import java.util.Properties;
+
 public class Advice {
 
   public enum Action {
@@ -9,13 +11,18 @@ public class Advice {
     Close // Close the previously open position
   }
 
-  public final static Advice BUY = new Advice(Action.Buy, 10000);
-  public final static Advice SELL = new Advice(Action.Sell, 10000);
+  public final static Advice BUY = new Advice(Action.Buy);
+  public final static Advice SELL = new Advice(Action.Sell);
   public final static Advice HOLD = new Advice(Action.Hold, 0);
   public final static Advice CLOSE = new Advice(Action.Close, 0);
 
   private Action action;
   private int quantity;
+  private Properties properties = new Properties();
+
+  public Advice(Action action) {
+    this(action, 10000);
+  }
 
   public Advice(Action action, int quantity) {
     this.action = action;
@@ -28,6 +35,14 @@ public class Advice {
 
   public int getQuantity() {
     return quantity;
+  }
+
+  public Properties getProperties() {
+    return properties;
+  }
+
+  public void setProperty(String key, String value) {
+    properties.setProperty(key, value);
   }
 
   public String toString() {

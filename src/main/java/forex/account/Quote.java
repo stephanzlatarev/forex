@@ -12,6 +12,22 @@ public class Quote {
   private int sellPips = 0;
   private String sellQuote = null;
 
+  private int highPips = 0;
+  private int lowPips = 0;
+
+  public Quote() {
+  }
+
+  public Quote(Quote quote) {
+    this.time = quote.time;
+    this.buyPips = quote.buyPips;
+    this.buyQuote = quote.buyQuote;
+    this.sellPips = quote.sellPips;
+    this.sellQuote = quote.sellQuote;
+    this.highPips = quote.highPips;
+    this.lowPips = quote.lowPips;
+  }
+
   public int getBuyPips() {
     return buyPips;
   }
@@ -26,6 +42,14 @@ public class Quote {
 
   public String getSellQuote() {
     return sellQuote;
+  }
+
+  public int getHighPips() {
+    return highPips;
+  }
+
+  public int getLowPips() {
+    return lowPips;
   }
 
   public long getTime() {
@@ -53,6 +77,14 @@ public class Quote {
     this.time = time;
     this.buyPips = buy;
     this.sellPips = sell;
+  }
+
+  public void setQuote(long time, int buy, int sell, int high, int low) {
+    this.time = time;
+    this.buyPips = buy;
+    this.sellPips = sell;
+    this.highPips = high;
+    this.lowPips = low;
   }
 
   private boolean equals(String a, String b) {
