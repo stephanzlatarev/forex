@@ -3,7 +3,9 @@ FROM dockerfile/java
 MAINTAINER Stephan Zlatarev
 
 # Install Maven and Git
-RUN apt-get install maven -y
+RUN apt-get update && \
+    apt-get -y upgrade && \
+    apt-get install -y git maven
 
 # Fetch the application and package it into an executable jar
 RUN git clone https://github.com/stephanzlatarev/forex.git /root/forex
