@@ -29,11 +29,12 @@ root@forex:~# docker pull stephanzlatarev/forex
 ~~~
 * Start the container
 ~~~
-root@forex:~# docker run -i -t -p 8080 stephanzlatarev/forex
+root@forex:~# docker run -i -t -p 80:8080 stephanzlatarev/forex
 ~~~
+* Access the application via Web browser: `http://<droplet-ip-address>`
+
 * Exit to the console by pressing Ctrl+P and Ctrl+Q
 * Check the published port
 ~~~
 root@forex:~# docker ps -a
 ~~~
-* Access the application via Web browser: `http://<droplet-ip-address>:<docker-published-port>`
