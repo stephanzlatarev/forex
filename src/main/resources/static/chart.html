@@ -6,20 +6,22 @@
     <script src="jquery-1.9.1.js"></script>
     <script src="jquery.flot.js"></script>
     <script src="jquery.flot.time.js"></script>
+    <style type="text/css">
+      html,body { height: 100%; margin: 0px; padding: 0px; }
+      #chart { height: 100% }
+    </style>
   </head>
 
-<script type="text/javascript">
-  $(document).ready(function() {
-    readHistory();
-  });
 
-  var advisor;
-  var data;
+<script type="text/javascript">
+  var chart
+  var data
 
   var grid = {
     xStart: getWeekStart(),
     xEnd: getWeekEnd()
   }
+
   var options = {
     series: {
       lines: { show: true },
@@ -29,23 +31,28 @@
       mode: 'time',
       timeformat: "%a %H:%M %d.%m %Y",
       timezone: 'browser'
+    },
+    grid: {
+      markings: []
+    },
+    hooks: {
+      draw: function(plot, ctx) {
+        var combos = options.grid.markings
+
+        for (var c in combos) {
+          var point = plot.pointOffset({ x: (combos[c].xaxis.from + combos[c].xaxis.to) / 2, y: grid.yMid })
+          ctx.fillText(combos[c].label, point.left - ctx.measureText(combos[c].label).width / 2, point.top )
+        }
+      }
     }
   }
 
-  function readHistory() {
-    $.ajax({
-      url: "chart/",
-      dataType: "json"
-    }).done(function(d) {
-      data = d
-      displayData()
-    });
-  }
-
   function displayData() {
-    calibrateChart()
-    calibrateGrid()
-    displayChart()
+    if (chart && data && options.grid.markings) {
+      calibrateChart()
+      calibrateGrid()
+      displayChart()
+    }
   }
 
   function calibrateChart() {
@@ -90,7 +97,6 @@
 
     // draw
     $("#chart").empty()
-      .width($(window).innerWidth() - 16).height($(window).innerWidth() - 80)
       .plot(plot, options).data("plot");
   }
 
@@ -100,8 +106,6 @@
   // London:   08:00 am - 05:00 pm
   // New York: 01:00 pm - 10:00 pm
   function frameMarketHours(plot) {
-    plot.push(newFrame(getWeekStart(), getWeekEnd(), grid.yMin, grid.yMax, 'black'))
-
     for (var d = 1; d <= 5; d++) {
       plot.push(newFrame(getTime(d, 8), getTime(d, 17), grid.yMin, grid.yMax, 'black'))
       plot.push(newFrame(getTime(d, 13), getTime(d, 22), grid.yMin, grid.yMax, 'black'))
@@ -128,10 +132,79 @@
   function getWeekEnd() {
     return getTime(5, 22)
   }
+
+  function comboColor(combo) {
+    switch (combo) {
+      case 101: return "#FFCCCC"
+      case 102: return "#EEDDCC"
+      case 103: return "#FFDDCC"
+      case 104: return "#EECCDD"
+      case 201: return "#DDFFCC"
+      case 202: return "#CCFFCC"
+      case 203: return "#DDFFCC"
+      case 204: return "#CCEEDD"
+      case 301: return "#FFEECC"
+      case 302: return "#EEFFCC"
+      case 303: return "#FFFFCC"
+      case 304: return "#EEEEDD"
+      case 401: return "#DDCCEE"
+      case 402: return "#CCDDEE"
+      case 403: return "#DDDDEE"
+      case 404: return "#CCCCFF"
+    }
+  }
+
+  function comboLabel(combo) {
+    switch (combo) {
+      case 101: return "FIRE/FIRE"
+      case 102: return "FIRE/EARTH"
+      case 103: return "FIRE/AIR"
+      case 104: return "FIRE/WATER"
+      case 201: return "EARTH/FIRE"
+      case 202: return "EARTH/EARTH"
+      case 203: return "EARTH/AIR"
+      case 204: return "EARTH/WATER"
+      case 301: return "AIR/FIRE"
+      case 302: return "AIR/EARTH"
+      case 303: return "AIR/AIR"
+      case 304: return "AIR/WATER"
+      case 401: return "WATER/FIRE"
+      case 402: return "WATER/EARTH"
+      case 403: return "WATER/AIR"
+      case 404: return "WATER/WATER"
+    }
+  }
+
+  //---------------------
+
+  $.ajax({
+    url: "chart/",
+    dataType: "json"
+  }).done(function(d) {
+    data = d
+    displayData()
+  });
+
+  $.ajax({
+    url: "combo/",
+    dataType: "json"
+  }).done(function(d) {
+    options.grid.markings = []
+    for (var i in d) {
+      options.grid.markings.push({ xaxis: { from: d[i].startTime, to: d[i].endTime }, color: comboColor(d[i].combo), label: comboLabel(d[i].combo) })
+    }
+    displayData()
+  });
+
+  $(document).ready(function() {
+    chart = "ready";
+    displayData();
+  });
+
 </script>
 
- <body style=>
-  <div id="chart" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%"></div>
- </body>
-
+  <body>
+    <div id="chart">
+    </div>
+  </body>
 </html>

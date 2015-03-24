@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import forex.service.QuoteService;
 import forex.trader.TraderClient;
+import forex.wave.ComboService;
 
 @Controller
 @EnableAutoConfiguration
@@ -25,11 +26,18 @@ public class Application {
   private final static TimeZone GMT = TimeZone.getTimeZone("GMT");
 
   private TraderClient client = null;
+  private ComboService combos = new ComboService();
 
   @RequestMapping(method=RequestMethod.GET, value="/quote/", produces=MediaType.APPLICATION_JSON_VALUE)
   @ResponseBody
   String quote() throws IOException {
     return new QuoteService(getClient()).quote().toJson();
+  }
+
+  @RequestMapping(method=RequestMethod.GET, value="/combo/", produces=MediaType.APPLICATION_JSON_VALUE)
+  @ResponseBody
+  String combos() throws IOException {
+    return new ObjectMapper().convertValue(combos.getWindows(), JsonNode.class).toString();
   }
 
   @RequestMapping(method=RequestMethod.GET, value="/chart/", produces=MediaType.APPLICATION_JSON_VALUE)
