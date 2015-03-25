@@ -43,14 +43,16 @@ public class Application {
   @RequestMapping(method=RequestMethod.GET, value="/chart/", produces=MediaType.APPLICATION_JSON_VALUE)
   @ResponseBody
   String chart() throws IOException {
+    final int candleSize = 10;
+
     Calendar calendar = Calendar.getInstance(GMT);
     long time = calendar.getTimeInMillis();
     calendar.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY);
     calendar.set(Calendar.HOUR_OF_DAY, 22);
     calendar.set(Calendar.MINUTE, 0);
-    time = (time - calendar.getTimeInMillis()) / (1000L * 60);
+    int candleCount = (int) ((time - calendar.getTimeInMillis()) / (1000L * 60 * candleSize));
 
-    Object chart = new QuoteService(getClient()).chart((int) time);
+    Object chart = new QuoteService(getClient()).chart(candleCount, candleSize);
     return new ObjectMapper().convertValue(chart, JsonNode.class).toString();
   }
 

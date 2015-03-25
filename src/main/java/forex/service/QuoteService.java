@@ -30,15 +30,15 @@ public class QuoteService {
     return new BuySellQuote(entities.get(0));
   }
 
-  public CandleChart chart(int candles) throws IOException {
+  public CandleChart chart(int candleCount, int candleSize) throws IOException {
     String data = client.getConnection().service(client, "dwr/call/plaincall/ChartService.getCandlesByCode.dwr",
         "c0-scriptName", "ChartService",
         "c0-methodName", "getCandlesByCode",
         "c0-id", "0",
         "c0-param0", "boolean:false",
-        "c0-e2", "number:" + candles, // candles count
+        "c0-e2", "number:" + candleCount,
         "c0-e3", "string:EURUSD",
-        "c0-e4", "number:60000",      // candle size - 60 seconds
+        "c0-e4", "number:" + (candleSize * 60000),
         "c0-e5", "number:0",
         "c0-e1", "Object_Object:{max:reference:c0-e2, code:reference:c0-e3, period:reference:c0-e4, timestamp:reference:c0-e5}",
         "c0-param1", "Array:[reference:c0-e1]",

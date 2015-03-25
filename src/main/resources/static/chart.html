@@ -29,7 +29,7 @@
     },
     xaxis : {
       mode: 'time',
-      timeformat: "%a %H:%M %d.%m %Y",
+      timeformat: "%H:%M %d.%m",
       timezone: 'browser'
     },
     grid: {
@@ -37,12 +37,32 @@
     },
     hooks: {
       draw: function(plot, ctx) {
+        // draw combo shading
         var combos = options.grid.markings
-
         for (var c in combos) {
           var point = plot.pointOffset({ x: (combos[c].xaxis.from + combos[c].xaxis.to) / 2, y: grid.yMid })
           ctx.fillText(combos[c].label, point.left - ctx.measureText(combos[c].label).width / 2, point.top )
         }
+
+        // draw trading hours (GMT):
+        // Sydney:   10:00 pm - 07:00 am
+        // Tokyo:    00:00 am - 09:00 am
+        // London:   08:00 am - 05:00 pm
+        // New York: 01:00 pm - 10:00 pm
+        for (var d = 1; d <= 5; d++) {
+          var londonOpen  = plot.pointOffset({ x: getTime(d,  8), y: grid.yMax })
+          var londonClose = plot.pointOffset({ x: getTime(d, 17), y: grid.yMin })
+          var newyorkOpen = plot.pointOffset({ x: getTime(d, 13), y: grid.yMax })
+          var newyorkClose = plot.pointOffset({ x: getTime(d, 22), y: grid.yMin })
+
+          ctx.beginPath();
+          ctx.rect(londonOpen.left, londonOpen.top, londonClose.left - londonOpen.left, londonClose.top - londonOpen.top);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.rect(newyorkOpen.left, newyorkOpen.top, newyorkClose.left - newyorkOpen.left, newyorkClose.top - newyorkOpen.top);
+          ctx.stroke();
+        }
+
       }
     }
   }
@@ -82,8 +102,6 @@
     var plot = []
     var series = []
 
-    frameMarketHours(plot)
-
     for (i in data) {
       if ((grid.xStart <= data[i].timestamp) && (data[i].timestamp <= grid.xEnd)) {
         series.push([ data[i].timestamp, data[i].open ])
@@ -95,25 +113,13 @@
 
     plot.push({ data: series, color: 'green' });
 
+    // add current pips line
+    var pips = data[data.length - 1].close
+    plot.push({ data: [ [ grid.xStart, pips ], [ grid.xEnd, pips ] ], color: 'blue' })
+
     // draw
     $("#chart").empty()
       .plot(plot, options).data("plot");
-  }
-
-  // Market hours (GMT):
-  // Sydney:   10:00 pm - 07:00 am
-  // Tokyo:    00:00 am - 09:00 am
-  // London:   08:00 am - 05:00 pm
-  // New York: 01:00 pm - 10:00 pm
-  function frameMarketHours(plot) {
-    for (var d = 1; d <= 5; d++) {
-      plot.push(newFrame(getTime(d, 8), getTime(d, 17), grid.yMin, grid.yMax, 'black'))
-      plot.push(newFrame(getTime(d, 13), getTime(d, 22), grid.yMin, grid.yMax, 'black'))
-    }
-  }
-
-  function newFrame(x1, x2, y1, y2, color) {
-    return { data: [ [x1, y1], [x1, y2], [x2, y2], [x2, y1], [x1, y1] ], color: color }
   }
 
   function getTime(day, hour) {
