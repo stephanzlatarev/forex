@@ -47,6 +47,10 @@ public class DwrParser {
 
     String value = tokens.nextToken();
 
+    if (value.startsWith("\"") && value.endsWith("\"")) {
+      value = value.substring(1, value.length() - 1);
+    }
+
     entity.put(key, value);
   }
 

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+<script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.3.14/angular.min.js"></script>
+<script src="dateFormat.min.js"></script>
+</head>
+
+<body>
+
+<div ng-app="forex" ng-controller="history">
+  <table class="table table-striped">
+    <thead><tr><th>Date</th><th>Call</th><th>Quantity</th><th>Price</th></tr></thead>
+    <tbody>
+      <tr ng-repeat="order in history">
+        <td>{{ order.timestamp }}</td>
+        <td ng-show="order.quantity >= 0">Buy</td>
+        <td ng-show="order.quantity < 0">Sell</td>
+        <td>{{ order.absQuantity }}</td>
+        <td>{{ order.executedPrice }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+var app = angular.module('forex', []);
+app.controller('history', function($scope, $http) {
+  $http.get("/history/").success(function(history) {
+    $scope.history = history
+
+    for (var o in history) {
+      history[o].timestamp = DateFormat.format.date(eval(history[o].created), "dd MMM yyyy HH:mm:ss")
+      history[o].absQuantity = Math.abs(history[o].quantity)
+    }
+  })
+})
+</script>
+
+</body>
+</html>

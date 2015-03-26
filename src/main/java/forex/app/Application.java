@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import forex.service.HistoryService;
 import forex.service.QuoteService;
 import forex.trader.TraderClient;
 import forex.wave.ComboService;
@@ -25,8 +26,15 @@ public class Application {
 
   private final static TimeZone GMT = TimeZone.getTimeZone("GMT");
 
-  private TraderClient client = null;
+  private TraderClient client = new TraderClient();
   private ComboService combos = new ComboService();
+  private HistoryService history = new HistoryService().use(client);
+
+  @RequestMapping(method=RequestMethod.GET, value="/history/", produces=MediaType.APPLICATION_JSON_VALUE)
+  @ResponseBody
+  String history() throws IOException {
+    return new ObjectMapper().convertValue(history.getHistory(0, 100), JsonNode.class).toString();
+  }
 
   @RequestMapping(method=RequestMethod.GET, value="/quote/", produces=MediaType.APPLICATION_JSON_VALUE)
   @ResponseBody

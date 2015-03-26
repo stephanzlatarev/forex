@@ -7,7 +7,7 @@
     <script src="jquery.flot.js"></script>
     <script src="jquery.flot.time.js"></script>
     <style type="text/css">
-      html,body { height: 100%; margin: 0px; padding: 0px; }
+      html,body { height: 100%; margin: 0px; padding: 0px; overflow: hidden; }
       #chart { height: 100% }
     </style>
   </head>
@@ -204,6 +204,10 @@
 
   $(document).ready(function() {
     chart = "ready";
+    displayData();
+  });
+
+  $(window).resize(function() {
     displayData();
   });
 

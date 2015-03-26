@@ -4,25 +4,37 @@ import java.io.IOException;
 
 public class TraderClient {
 
-  private TraderConnection connection;
-  private TraderSession session;
+  private String username;
+  private String password;
 
-  public TraderClient() throws IOException {
+  private TraderConnection connection = null;
+  private TraderSession session = null;
+
+  public TraderClient() {
     this(System.getProperty("forex.username", "trader.bg@mailimate.com"), System.getProperty("forex.password", "Abcd1234"));
   }
 
-  public TraderClient(String username, String password) throws IOException {
-    connection = new TraderConnection();
-    session = new TraderSession(connection);
-    session.login(username, password);
+  public TraderClient(String username, String password) {
+    this.username = username;
+    this.password = password;
   }
 
-  public TraderConnection getConnection() {
+  public TraderConnection getConnection() throws IOException {
+    if (connection == null) connect();
+
     return connection;
   }
 
-  public TraderSession getSession() {
+  public TraderSession getSession() throws IOException {
+    if (connection == null) connect();
+
     return session;
+  }
+
+  private void connect() throws IOException {
+    connection = new TraderConnection();
+    session = new TraderSession(connection);
+    session.login(username, password);
   }
 
 }
