@@ -28,7 +28,12 @@ public class Application {
 
   private TraderClient client = new TraderClient();
   private ComboService combos = new ComboService();
+  private QuoteService quotes = new QuoteService().use(client);
   private HistoryService history = new HistoryService().use(client);
+
+  public Application() {
+    new Thread(new Broker(client)).start();
+  }
 
   @RequestMapping(method=RequestMethod.GET, value="/history/", produces=MediaType.APPLICATION_JSON_VALUE)
   @ResponseBody
@@ -39,7 +44,7 @@ public class Application {
   @RequestMapping(method=RequestMethod.GET, value="/quote/", produces=MediaType.APPLICATION_JSON_VALUE)
   @ResponseBody
   String quote() throws IOException {
-    return new QuoteService(getClient()).quote().toJson();
+    return quotes.quote().toJson();
   }
 
   @RequestMapping(method=RequestMethod.GET, value="/combo/", produces=MediaType.APPLICATION_JSON_VALUE)
@@ -60,15 +65,8 @@ public class Application {
     calendar.set(Calendar.MINUTE, 0);
     int candleCount = (int) ((time - calendar.getTimeInMillis()) / (1000L * 60 * candleSize));
 
-    Object chart = new QuoteService(getClient()).chart(candleCount, candleSize);
+    Object chart = quotes.chart(candleCount, candleSize);
     return new ObjectMapper().convertValue(chart, JsonNode.class).toString();
-  }
-
-  private synchronized TraderClient getClient() throws IOException {
-    if (client == null) {
-      client = new TraderClient();
-    }
-    return client;
   }
 
   public static void main(String[] args) throws IOException {

@@ -26,7 +26,8 @@ abstract class Service<T> {
       System.err.println("Have to re-authenticate ...");
     }
     
-    return new DwrParser().parse(response, 1);
+    List<Map<String, String>> list = new DwrParser().parse(response);
+    return list;
   }
 
 }

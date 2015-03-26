@@ -4,19 +4,10 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
-import forex.parser.DwrParser;
-import forex.trader.TraderClient;
-
-public class QuoteService {
-
-  private TraderClient client;
-
-  public QuoteService(TraderClient client) {
-    this.client = client;
-  }
+public class QuoteService extends Service<QuoteService> {
 
   public BuySellQuote quote() throws IOException {
-    String data = client.getConnection().service(client, "dwr/call/plaincall/InstrumentsService.getMinMaxQuantities.dwr",
+    List<Map<String, String>> entities = service("dwr/call/plaincall/InstrumentsService.getMinMaxQuantities.dwr",
         "c0-scriptName", "InstrumentsService",
         "c0-methodName", "getMinMaxQuantities",
         "c0-id", "0",
@@ -25,13 +16,11 @@ public class QuoteService {
         "c0-param1", "Array:[reference:c0-e1]",
         "c0-param2", "string:Europe%2FSofia");
 
-    List<Map<String, String>> entities = new DwrParser().parse(data, 1);
-
-    return new BuySellQuote(entities.get(0));
+    return new BuySellQuote(entities.get(1));
   }
 
   public CandleChart chart(int candleCount, int candleSize) throws IOException {
-    String data = client.getConnection().service(client, "dwr/call/plaincall/ChartService.getCandlesByCode.dwr",
+    List<Map<String, String>> entities = service("dwr/call/plaincall/ChartService.getCandlesByCode.dwr",
         "c0-scriptName", "ChartService",
         "c0-methodName", "getCandlesByCode",
         "c0-id", "0",
@@ -44,7 +33,16 @@ public class QuoteService {
         "c0-param1", "Array:[reference:c0-e1]",
         "c0-param2", "boolean:true");
 
-    return new CandleChart(new DwrParser().parse(data, 2));
+    int skip = 0;
+    for (Map<String, String> entry: entities) {
+      if (entry.containsKey("timestamp")) {
+        break;
+      }
+      skip++;
+    }
+    for (int i = 0; i < skip; i++) entities.remove(0);
+
+    return new CandleChart(entities);
   }
 
 }

@@ -1,26 +1,43 @@
 package forex.service;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
-import forex.trader.TraderClient;
+public class TradeService extends Service<TradeService> {
 
-public class TradeService {
-
-  private TraderClient client;
-
-  public TradeService(TraderClient client) {
-    this.client = client;
-  }
-
-  public void trade(int quantity, String price) throws IOException {
-    client.getConnection().service(client, "dwr/call/plaincall/AccountService.trade.dwr",
-        "c0-scriptName", "AccountService",
-        "c0-methodName", "trade",
+  public List<String> open(int quantity, String price) throws IOException {
+    List<Map<String, String>> response = service("dwr/call/plaincall/MarketOrderService.placeMarketOrder.dwr",
+        "c0-scriptName", "MarketOrderService",
+        "c0-methodName", "placeMarketOrder",
         "c0-id", "0",
         "c0-param0", "boolean:false",
-        "c0-e1", "string:EURUSD",
-        "c0-e2", "string:EUR%2FUSD",
-        "c0-param1", "Object_Object:{id:reference:c0-e1, code:reference:c0-e2, targetPrice:" + price + ", quantity:" + quantity + "}");
+        "c0-param1", "string:EURUSD",
+        "c0-param2", "number:" + price,
+        "c0-param3", "number:" + quantity,
+        "c0-param4", "null:null",
+        "c0-param5", "null:null",
+        "c0-param6", "string:NONE");
+
+    List<String> ids = new ArrayList<String>();
+    for (Map<String, String> entry: response) {
+      if (entry.containsKey("positionId")) {
+        ids.add(entry.get("positionId"));
+      }
+    }
+
+    return ids;
+  }
+
+  public void close(String position) throws IOException {
+    service("dwr/call/plaincall/MarketOrderService.closePosition.dwr",
+        "c0-scriptName", "MarketOrderService",
+        "c0-methodName", "closePosition",
+        "c0-id", "0",
+        "c0-param0", "boolean:false",
+        "c0-param1", "string:" + position,
+        "c0-param2", "null:null");
   }
 
 }

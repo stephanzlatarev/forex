@@ -11,7 +11,7 @@
 
 <div ng-app="forex" ng-controller="history">
   <table class="table table-striped">
-    <thead><tr><th>Date</th><th>Call</th><th>Quantity</th><th>Price</th></tr></thead>
+    <thead><tr><th>Date</th><th>Call</th><th>Quantity</th><th>Price</th><th>Id</th></tr></thead>
     <tbody>
       <tr ng-repeat="order in history">
         <td>{{ order.timestamp }}</td>
@@ -19,6 +19,7 @@
         <td ng-show="order.quantity < 0">Sell</td>
         <td>{{ order.absQuantity }}</td>
         <td>{{ order.executedPrice }}</td>
+        <td>{{ order.id }}</td>
       </tr>
     </tbody>
   </table>

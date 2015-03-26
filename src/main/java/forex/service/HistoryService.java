@@ -7,7 +7,7 @@ import java.util.Map;
 public class HistoryService extends Service<HistoryService> {
 
   public List<Map<String, String>> getHistory(int pageOffset, int pageSize) throws IOException {
-    return service("dwr/call/plaincall/ReportsService.getOrder.dwr",
+    List<Map<String, String>> list = service("dwr/call/plaincall/ReportsService.getOrder.dwr",
         "c0-scriptName", "ReportsService",
         "c0-methodName", "getOrder",
         "c0-id", "0",
@@ -20,6 +20,8 @@ public class HistoryService extends Service<HistoryService> {
         "c0-param6", "number:" + pageSize,
         "c0-param7", "string:modified",
         "c0-param8", "number:-1");
+    list.remove(0);
+    return list;
   }
 
 }
