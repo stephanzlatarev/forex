@@ -11,7 +11,17 @@
   </head>
 
 <body>
-<iframe src="chart.html"></iframe>
-<iframe src="history.html"></iframe>
+<iframe id="chart" src="chart.html"></iframe>
+<iframe id="history" src="history.html"></iframe>
+
+<script>
+  $(document).ready(resize)
+  $(window).resize(resize)
+  
+  function resize() {
+    $('#chart').height(($(window).width() < $(window).height()) ? $('#chart').width() / 2 : "100%")
+  }
+</script>
+
 </body>
 </html>
