@@ -31,7 +31,7 @@ public class TraderClient {
     return session;
   }
 
-  private void connect() throws IOException {
+  public void connect() throws IOException {
     connection = new TraderConnection();
     session = new TraderSession(connection);
     session.login(username, password);

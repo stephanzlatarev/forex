@@ -22,8 +22,8 @@ abstract class Service<T> {
     String response = client.getConnection().service(client, endpoint, params);
 
     if ((response == null) || response.contains("InvalidSessionException")) {
-      // TODO: reconnect
-      System.err.println("Have to re-authenticate ...");
+      client.connect();
+      response = client.getConnection().service(client, endpoint, params);
     }
     
     List<Map<String, String>> list = new DwrParser().parse(response);
